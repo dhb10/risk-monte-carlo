@@ -107,6 +107,29 @@ const App = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!results || results.length === 0) {
+      alert("No data available for download.");
+      return;
+    }
+    try {
+      const payload = { data: results };
+      const res = await axios.post(`${backendUrl}/generate_pdf`, payload, {
+        headers: { "Content-Type": "application/json" },
+        responseType: "blob"
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "risk_scenarios.pdf");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error downloading the PDF: ", error);
+    }
+  };
+
   function renderResults() {
     if (isLoading) {
       return (
@@ -169,6 +192,7 @@ const App = () => {
               response={results}
               handleReset={handleReset}
               handleDownload={handleDownload}
+              handleDownloadPdf={handleDownloadPdf}
               isLoading={isLoading}
             />
           </div>

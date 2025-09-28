@@ -41,7 +41,7 @@ const RiskUpload = ({ isLoading, onSubmit, resetFileTrigger, clearResetFileTrigg
         setFile(uploadedFile);
         setError('');
       },
-      header: true, // Force headers!
+      header: true, //force headers
       skipEmptyLines: true,
     });
   }, []);
@@ -75,7 +75,7 @@ const RiskUpload = ({ isLoading, onSubmit, resetFileTrigger, clearResetFileTrigg
     <div className="text-center text-black">
       <div
         {...getRootProps()}
-        className="p-4 border-2 border-dashed border-gray-300 rounded-md bg-gray-100 hover:border-black cursor-pointer mt-6 print:hidden"
+        className="p-4 border-2 max-w-lg mx-auto  border-dashed border-gray-300 rounded-md bg-gray-100 hover:border-black cursor-pointer mt-6 print:hidden"
       >
         <input {...getInputProps()} />
         {file ? (

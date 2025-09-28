@@ -5,6 +5,7 @@ const ResultsButtons = ({
     response,
     handleReset,
     handleDownload,
+    handleDownloadPdf,
     isLoading,
 }) => {
     if (isLoading || !response || response.length === 0) return null;
@@ -15,6 +16,9 @@ const ResultsButtons = ({
             </Button>
             <Button onClick={handleDownload} isDisabled={isLoading}>
                 DOWNLOAD CSV
+            </Button>
+            <Button onClick={handleDownloadPdf} isDisabled={isLoading}>
+                DOWNLOAD PDF
             </Button>
         </div>
     );

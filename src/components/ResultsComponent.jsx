@@ -1,26 +1,13 @@
 import React from "react";
 
-// Helper: escape HTML for footnotes in case of special chars (kept for future use)
-function escapeHtml(unsafe) {
-  return unsafe
-    .replace(/[&<"']/g, function (m) {
-      switch (m) {
-        case "&": return "&amp;";
-        case "<": return "&lt;";
-        case '"': return "&quot;";
-        case "'": return "&#039;";
-        default: return m;
-      }
-    });
-}
 
 const ResultsComponent = ({ response }) => {
-  // Defensive: If there's truly nothing or wrong structure, early exit.
+  //if there's truly nothing or wrong structure -> early exit.
   if (!Array.isArray(response)) {
     return <div className="text-red-500">No results to display.</div>;
   }
 
-  // Global footnote assignment
+  //footnote assignment
   let contentToIndex = {};
   let contents = [];
   let nextFootnote = 1;
@@ -35,9 +22,9 @@ const ResultsComponent = ({ response }) => {
   }
 
   return (
-    <div className="w-full mx-auto px-4 text-left">
+    <div className="w-full mx-auto px-4 text-left bg-white pt-5 pb-5 rounded-lg">
       {response.map((risk, riskIdx) => {
-        // Defensive: if results block missing
+        //defensive: if results block missing
         const docs = Array.isArray(risk?.results?.scenario_documents)
           ? risk.results.scenario_documents
           : [];
@@ -56,9 +43,9 @@ const ResultsComponent = ({ response }) => {
               const contentFootnoteNum = getContentIndex(source.content);
 
               return (
-                <div key={srcIdx} className="mt-4 mb-8 pl-2">
-                  <div>
-                    LINK:<br />
+                <div key={srcIdx} className="mt-4  mb-8 pl-2">
+                  <div className="font-semibold text-lg">
+                    LINK:<nbsp> </nbsp>  
                     <a
                       href={source.url}
                       className="font-semibold text-blue-700 underline"
@@ -69,8 +56,8 @@ const ResultsComponent = ({ response }) => {
                     </a>
                     <sup className="ml-1 text-xs">{contentFootnoteNum}</sup>
                   </div>
-                  <div className="text-lg text-gray-700 mt-4 mb-4">
-                    Query: {source.search_query}
+                  <div className="text-lg font-semibold text-gray-700 mt-4 mb-4">
+                    QUERY: {source.search_query}
                   </div>
                   <ul className="list-disc list-outside ml-4 text-gray-600 text-lg">
                     {(source.scenarios || []).map((sc, scIdx) => (
@@ -92,14 +79,17 @@ const ResultsComponent = ({ response }) => {
 
       {/* Footnotes section */}
       <div className="mt-10 border-t pt-6 w-full mx-auto px-4">
-        <h2 className="text-md font-semibold mb-3">Source content</h2>
+        <h2 className="text-md font-bold mb-3">SOURCE CONTENT</h2>
         <ol className="list-decimal list-outside text-md text-gray-900">
-          {contents.map((ct, i) => (
-            <li key={i} className="mb-3 ">
-              {/* whitespace-pre-line */}
-              {ct}
-            </li>
-          ))}
+          {contents.map((ct, i) => {
+            // console.log("FOOTNOTE DEBUG:", JSON.stringify(ct));
+            return (
+              <li key={i} className="mb-3">
+                {ct}
+              </li>
+            //  whitespace-pre-line -> add to the li class if we want the spaces, but avoiding for the moment to keep the source content concise
+            );
+          })}
         </ol>
       </div>
     </div>

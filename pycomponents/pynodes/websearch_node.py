@@ -7,13 +7,15 @@ from langchain_tavily import TavilySearch
 from pycomponents.pynodes.schema import GraphState
 from langgraph.types import Command
 
+tavily_api_key = os.getenv("TAVILY_API_KEY")
+
 # Initialize Tavily API wrapper
 
 web_search_tool = TavilySearch(
-    # max_results=5, 
-    max_results=2,             
+    max_results=5, 
+    # max_results=2,             
     include_answer=True,        #test this is it providing what we need
-    include_raw_content=False,
+    include_raw_content=True,
     search_depth="advanced"
 )
 

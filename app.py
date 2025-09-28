@@ -5,6 +5,7 @@ import os
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import zipfile
+import json
 from pycomponents.simulation import run_simulation
 from azure.storage.blob import BlobServiceClient
 import numpy as np
@@ -14,7 +15,7 @@ import io
 from celery_config import celery_app
 from celery import chord
 
-from tasks import df_to_list_of_risk_dicts, generate_scenarios, chord_callback
+from tasks import df_to_list_of_risk_dicts, generate_scenarios, chord_callback, generate_risk_scenarios_pdf
 
 ###---ENV VARIABLES---###
 azure_openai_api_key = os.getenv("AZUREOPENAI_API_KEY")
@@ -94,7 +95,28 @@ def generate_csv():
         download_name=filename,
     )
 
-
+@app.route('/generate_pdf', methods=['POST'])
+def generate_pdf():
+    if request.method == 'OPTIONS':
+        response = jsonify({'message': 'CORS preflight successful'})
+        response.headers.update({
+            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Credentials": "true",
+        })
+        return response, 200
+    
+    payload = request.json
+    if not payload or 'data' not in payload:
+        return jsonify({"error": "No data provided"}), 400
+    pdf_buffer = generate_risk_scenarios_pdf(payload['data'])
+    return send_file(
+        pdf_buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='risk_scenarios.pdf'
+    )
 
 @app.route("/simulate",  methods=['POST', 'OPTIONS'])
 def simulate():
@@ -223,6 +245,12 @@ def task_status(task_id):
         "state": task_result.state,
         "result": task_result.result if task_result.state == "SUCCESS" else None
     }
+
+
+    # with open(os.path.expanduser("~/Desktop/flask_serve_debug.json"), "w", encoding="utf-8") as f:
+    #     f.write(json.dumps(response, indent=2, ensure_ascii=False))
+
+
     return jsonify(response)
 
 
@@ -241,13 +269,13 @@ def task_status(task_id):
 # if __name__ == '__main__':
 #     app.run(host="0.0.0.0", port=5000, debug=False)
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
+# @app.after_request
+# def add_cors_headers(response):
+#     response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+#     response.headers['Access-Control-Allow-Credentials'] = 'true'
+#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+#     return response
 
 
 if __name__ == "__main__":

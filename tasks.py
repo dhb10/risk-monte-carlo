@@ -14,11 +14,10 @@ from celery_config import celery_app
 
 import traceback
 
-from reportlab.lib.pagesizes import LETTER
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem
-from reportlab.lib.units import inch
-from reportlab.lib import colors
+from reportlab.lib.pagesizes import LETTER
+from reportlab.lib.enums import TA_LEFT
 
 from azure.storage.blob import BlobServiceClient
 
@@ -55,98 +54,83 @@ def upload_df_to_blob(df: pd.DataFrame, blob_name: str):
 
     import re
 
-def clean_markdown_text(text, width=100):
-    """
-    Cleans up common markdown patterns, improves whitespace, 
-    and reflows text for better paragraph readability.
-    """
-    # Remove markdown headers and formatting
-    text = re.sub(r"#* *(\d*\.)?[\-\*]?", "", text)                  # Remove #, ##, ###, bullet points, numbered bullets
-    text = re.sub(r"`+", "", text)                                   # Remove inline code marks
-    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)            # [text](link) -> text
-    text = re.sub(r"!\[([^\]]*)\]\([^\)]+\)", r"\1", text)           # ![alt](img) -> alt
-    text = re.sub(r"---+", "", text)                                 # Remove HRs
-    
-    # Replace multiple newlines/tabs with a single blank line
-    text = re.sub(r"[\n\r]{3,}", "\n\n", text)
-    text = re.sub(r' +', ' ', text)
-    text = re.sub(r'\n[ \t]+\n', '\n\n', text)                       # Blank lines w/ spaces -> blank line
-    text = re.sub(r'\n{2,}', '\n\n', text)                           # Multiple blank lines to just two
-    
-    # Strip start/end whitespace
-    text = text.strip()
-    
-    # === Line reflow step for paragraph-like look ===
-    # Only reflow if the paragraph is long enough (avoid mangling single-line lists, etc)
-    paragraphs = [p.strip() for p in text.split('\n\n')]
-    reflowed = "\n\n".join(textwrap.fill(p, width=width) for p in paragraphs if p)
-    
-    return reflowed
 
-
-def clean_contents_in_results(results):
-    """
-    Traverses your results data structure and cleans the "content" key in each document found under
-    results['documents'], results['graded_documents'], and results['scenario_documents'].
-    Handles lists of risks at the top-level.
-    """
-    # Support both top-level list of risks and a single result dict
-    risks = results if isinstance(results, list) else [results]
-    
-    doc_keys = ["documents", "graded_documents", "scenario_documents"]
-
-    for risk_result in risks:
-        try:
-            containers = risk_result.get("results", risk_result)
-        except AttributeError:
-            continue
-        for key in doc_keys:
-            docs = containers.get(key, [])
-            for doc in docs:
-                if "content" in doc and isinstance(doc["content"], str):
-                    doc["content"] = clean_markdown_text(doc["content"])
-                # If "scenarios" are nested and you want to clean those too, do something similar here
-
-    return results  # modifies in-place, also returned for convenience
-
-
-def generate_risk_pdf(risk_data) -> BytesIO:
+def generate_risk_scenarios_pdf(risk_data) -> BytesIO:
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=LETTER, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+    doc = SimpleDocTemplate(buffer, pagesize=LETTER, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     styles = getSampleStyleSheet()
+    header_style = styles["Heading2"]
+    section_header = ParagraphStyle('section_header', parent=styles['Heading3'], textColor="#2563eb")
+    bold_style = ParagraphStyle('Bold', parent=styles['BodyText'], fontName='Helvetica-Bold')
+    scenario_style = styles['BodyText']
+
+    footnotes = []
+    content_footnote_map = {}
+    next_footnote = 1
+
     story = []
 
-    header_style = styles["Heading2"]
-    body_style = styles["BodyText"]
-    bullet_style = ParagraphStyle(
-        name='Bullet',
-        parent=styles['BodyText'],
-        bulletIndent=0,
-        leftIndent=15,
-        spaceBefore=3,
-    )
+    for risk in risk_data:
+        story.append(Paragraph(risk["risk_name"], header_style))
+        story.append(Paragraph(risk.get("risk_definition", ""), styles['BodyText']))
+        story.append(Spacer(1, 10))
 
-    for item in risk_data:
-        risk_json = list(item.values())[0]
-        risk = json.loads(risk_json)
+        docs = risk.get('results', {}).get('scenario_documents', [])
+        for source in docs:
+            # LINK and Title
+            story.append(Paragraph(f'<b>LINK:</b> <a href="{source["url"]}">{source["title"]}</a>', section_header))
 
-        story.append(Paragraph(risk["parent_risk"], header_style))
+            # Query with footnote at the end
+            query_text = f'<b>Query:</b> {source.get("search_query", "")}'
+            content = source.get("content", "")
+            footvalue = None
+            if content:
+                if content not in content_footnote_map:
+                    content_footnote_map[content] = next_footnote
+                    footnotes.append(content)
+                    footvalue = next_footnote
+                    next_footnote += 1
+                else:
+                    footvalue = content_footnote_map[content]
+                query_text += f' <super>{footvalue}</super>'
+            story.append(Paragraph(query_text, scenario_style))
+
+            # Scenarios as bullets (no 'start', only 'bulletType')
+            if source.get("scenarios"):
+                bullet_items = []
+                for sc in source["scenarios"]:
+                    reason = sc.get("reasoning", "")
+                    scen = sc.get("scenario", "")
+                    scenario_paragraph = Paragraph(scen, bold_style)
+                    if reason:
+                        reason_paragraph = Paragraph(reason, scenario_style)
+                        # sub bullet as hollow circle
+                        bullet_items.append(ListItem([
+                            scenario_paragraph,
+                            ListFlowable(
+                                [ListItem(reason_paragraph)],
+                                bulletType='bullet',
+                                bulletChar=u"\u25CB",
+                                leftIndent=18
+                            )
+                        ]))
+                    else:
+                        bullet_items.append(ListItem(scenario_paragraph))
+                story.append(ListFlowable(bullet_items, bulletType='bullet'))  # disc bullet for top-level bullets
+            story.append(Spacer(1, 12))
+        story.append(PageBreak())
+
+    # FOOTNOTES SECTION
+    story.append(Spacer(1, 16))
+    story.append(Paragraph('Source Content', header_style))
+    story.append(Spacer(1, 8))
+    for i, ct in enumerate(footnotes, 1):
+        story.append(Paragraph(f"{i}. {ct}", scenario_style))
         story.append(Spacer(1, 6))
-
-        story.append(Paragraph(risk["definition"], body_style))
-        story.append(Spacer(1, 6))
-
-        bullets = [ListItem(Paragraph(reason, bullet_style)) for reason in risk["reasoning"]]
-        story.append(ListFlowable(bullets, bulletType='bullet', start='bulletchar'))
-
-        story.append(Spacer(1, 12))
-        story.append(Paragraph("<hr width='100%' color='gray'/>", body_style))
-        story.append(Spacer(1, 12))
 
     doc.build(story)
     buffer.seek(0)
     return buffer
-
 
 
 ###---TASKS---###
@@ -177,13 +161,9 @@ def generate_scenarios(risk_dict: dict):
 
 @celery_app.task()
 def chord_callback(results):
-    # results: List of per-risk dictionaries from generate_scenarios
     print(f"Received list of {len(results)} risk analysis results")
-    print("*********")
-    print(results)
-    print("*********")
+    # print("*********")
+    # print(results)
+    # print("*********")
 
-    cleaned_results = clean_contents_in_results(results)
-
-    # return cleaned_results
     return results
