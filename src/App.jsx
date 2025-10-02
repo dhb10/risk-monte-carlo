@@ -8,6 +8,8 @@ import logo from "./assets/logo.png";
 import spinner from './assets/spinner.gif';
 import ResultsButtons from './components/ResultsButtons';
 import ResultsComponent from "./components/ResultsComponent";
+import Toggle from "./components/Toggle";
+import Simulation from "./components/Simulation";
 
 const App = () => {
   const [results, setResults] = useState(null);
@@ -15,6 +17,7 @@ const App = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [resetFileTrigger, setResetFileTrigger] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
 
   const backendUrl = "http://localhost:5000";
 
@@ -157,23 +160,49 @@ const App = () => {
       <div className="flex flex-col items-center mb-2 mt-12">
         <img src={logo} alt="Logo" className="w-64 h-auto mb-2" />
         <h2 className="text-xl font-bold text-black text-center tracking-wide uppercase mb-4 mt-2">
-          MONTE CARLO RISK SIMULATION
+          RISK SCENARIOS & MONTE CARLO SIMULATION
         </h2>
         <hr className="w-full border-t border-gray-500 print:hidden" />
 
-        {/* TAB BUTTONS */}
+        {/* mode buttons */}
         <div className="flex justify-center my-4 gap-4">
-          <Button onClick={() => setSelectedMode("Scenarios")}>
+          <Button
+            onClick={() => {
+              setSelectedMode("Scenarios");
+              setManualMode(false); // Reset manual toggle when changing mode
+            }}
+            className={
+              selectedMode === "Scenarios"
+                ? "bg-gray-700 text-white"
+                : "bg-gray-200 text-black"
+            }
+          >
             SCENARIOS
           </Button>
-          <Button onClick={() => setSelectedMode("Simulation")}>
+          <Button
+            onClick={() => {setSelectedMode("Simulation"); setResults(null);} }
+            className={
+              selectedMode === "Simulation"
+                ? "bg-gray-700 text-white"
+                : "bg-gray-200 text-black"
+            }
+          >
             SIMULATION
           </Button>
         </div>
+        {selectedMode === "Simulation" && (
+          <div className="flex justify-center mb-4">
+            <Toggle
+              isOn={manualMode}
+              onToggle={() => setManualMode(v => !v)}
+              label="Manual Monte Carlo Input"
+            />
+          </div>
+        )}
         <hr className="w-full border-t border-gray-500 print:hidden" />
       </div>
 
-      {/* Container with max width */}
+      {/* upload to identify scenarios */}
       <div className="w-full max-w-5xl mb-8">
         {selectedMode === "Scenarios" && (
           <div className="w-full mx-auto">
@@ -183,11 +212,10 @@ const App = () => {
                 isLoading={isUploading}
                 resetFileTrigger={resetFileTrigger}
                 clearResetFileTrigger={clearResetFileTrigger}
+                mode="Scenarios"
               />
             )}
-
             {renderResults()}
-
             <ResultsButtons
               response={results}
               handleReset={handleReset}
@@ -198,19 +226,28 @@ const App = () => {
           </div>
         )}
 
+        {/* upload and manual simulation */}
         {selectedMode === "Simulation" && (
-          <div className="text-center">
-            <ParameterForm onSubmit={handleSubmit} />
-            {results && (
-              <div className="w-full bg-white p-6 rounded shadow mt-6">
-                <div className="max-w-6xl mx-auto">
-                  <ResultsChart samples={results.samples} summary={results.summary} />
-                </div>
-              </div>
+          <div className="w-full mx-auto">
+            {/* If not manual mode, show risk upload */}
+            {!manualMode && (!results || results.length === 0) && (
+              <RiskUpload
+                onSubmit={formData => handleSubmit(formData, "Simulation")}
+                isLoading={isUploading}
+                resetFileTrigger={resetFileTrigger}
+                clearResetFileTrigger={clearResetFileTrigger}
+                mode="Simulation"
+              />
+            )}
+
+            {manualMode && (
+              <Simulation
+                onSubmit={formData => handleSubmit(formData, "Simulation") }
+                results={results}
+              />
             )}
           </div>
         )}
-
       </div>
     </div>
   );

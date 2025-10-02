@@ -42,9 +42,8 @@ const ParameterForm = ({ onSubmit }) => {
   };
 
   
-
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 ">
       {/* Variables section */}
       <div>
         {variables.length === 1 ? (
@@ -76,40 +75,44 @@ const ParameterForm = ({ onSubmit }) => {
             ))}
           </div>
         )}
-        <div className="mt-6">
+        <div className="mt-6 flex justify-center">
           <Button onClick={addVariable}>ADD VARIABLE</Button>
         </div>
       </div>
 
       {/* Formula + run simulation section */}
-      <div className="bg-white w-full md:w-1/2 lg:w-1/2 mx-auto shadow-md rounded-md p-6 space-y-4">
+      <div className="bg-white w-full md:w-1/2 lg:w-1/2 mx-auto border border-gray-700 shadow-md rounded-md p-6 space-y-4">
         <div>
-          <label className="block text-xs text-left font-bold mb-1 tracking-wider text-gray-400 uppercase" htmlFor="formula-input">
+          <label className="block text-xs text-left font-bold mb-1 tracking-wider text-gray-700 uppercase" htmlFor="formula-input">
             FORMULA
           </label>
           <textarea
             id="formula-input"
             placeholder="Enter formula (must use variables listed above)"
-            className="block w-full p-2 border border-gray-300 rounded"
+            className="block w-full mb-2 p-2 border border-gray-700 rounded focus:outline-none focus:border-gray-700 focus:ring-1 focus:ring-gray-700"
             value={formula}
             onChange={(e) => setFormula(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs text-left font-bold mb-1 tracking-wider text-gray-400 uppercase" htmlFor="num-trials-input">
+          <label className="block text-xs text-left font-bold mb-1 tracking-wider text-gray-700 uppercase" htmlFor="num-trials-input">
             NUMBER OF TRIALS
           </label>
           <input
             id="num-trials-input"
             type="number"
             placeholder="Number of trials"
-            className="block w-full p-2 border border-gray-300 rounded"
+            className="block w-full mb-2 p-2 border border-gray-700 rounded focus:outline-none focus:border-gray-700 focus:ring-1 focus:ring-gray-700"
             value={numTrials}
             onChange={(e) => setNumTrials(parseInt(e.target.value, 10))}
           />
         </div>
+                <div className="mt-6 flex justify-center">
+          <Button onClick={handleSubmit}>RUN SIMULATION</Button>
+        </div>
       </div>
-      <Button onClick={handleSubmit}>RUN SIMULATION</Button>
+
+      
     </div>
   );
 };

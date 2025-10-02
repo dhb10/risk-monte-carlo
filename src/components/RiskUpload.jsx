@@ -3,9 +3,11 @@ import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import Button from './Button.jsx';
 
-const REQUIRED_COLUMNS = ['sector', 'organization', 'risk_name', 'risk_definition'];
 
-const RiskUpload = ({ isLoading, onSubmit, resetFileTrigger, clearResetFileTrigger }) => {
+const RiskUpload = ({ isLoading, onSubmit, resetFileTrigger, clearResetFileTrigger, mode = "Scenarios" }) => {
+  const REQUIRED_COLUMNS = mode === "Simulation"
+    ? ['risk', 'scenario', 'variable', 'distribution', 'mean', 'std_dev', 'min', 'max', 'mode', 'formula']
+    : ['sector', 'organization', 'risk_name', 'risk_definition'];
   const [file, setFile] = useState(null);
   const [error, setError] = useState('');
 
