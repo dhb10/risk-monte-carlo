@@ -33,7 +33,10 @@ const App = () => {
     try {
       let response;
       if (mode === "Scenarios") {
+        // For scenarios, sending FormData (file upload), Content-Type optional but okay
         response = await axios.post(`${backendUrl}/scenarios`, formData, {
+          // Axios/Browser will set boundaries if you omit the header,
+          // but including it here is often harmless (less strict servers)
           headers: { "Content-Type": "multipart/form-data" }
         });
         // if async (returns task id), start polling:
@@ -44,9 +47,12 @@ const App = () => {
           setResults(response.data);
         }
       } else {
-        response = await axios.post(`${backendUrl}/simulate`, formData, {
-          headers: { "Content-Type": "application/json" }
-        });
+        // For simulation: could be FormData (file upload) or JSON (manual entry)
+        let config = {};
+        if (!(formData instanceof FormData)) {
+          config.headers = { "Content-Type": "application/json" };
+        }
+        response = await axios.post(`${backendUrl}/simulate`, formData, config);
         setResults(response.data);
       }
     } catch (error) {

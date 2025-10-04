@@ -6,7 +6,7 @@ import Button from './Button.jsx';
 
 const RiskUpload = ({ isLoading, onSubmit, resetFileTrigger, clearResetFileTrigger, mode = "Scenarios" }) => {
   const REQUIRED_COLUMNS = mode === "Simulation"
-    ? ['risk', 'scenario', 'variable', 'distribution', 'mean', 'std_dev', 'min', 'max', 'mode', 'formula']
+    ? ['risk', 'scenario', 'variable', 'distribution', 'mean', 'std_dev', 'min', 'max', 'mode', 'formula', 'formula_equals']
     : ['sector', 'organization', 'risk_name', 'risk_definition'];
   const [file, setFile] = useState(null);
   const [error, setError] = useState('');

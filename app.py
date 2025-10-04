@@ -118,13 +118,14 @@ def generate_pdf():
         download_name='risk_scenarios.pdf'
     )
 
-@app.route("/simulate",  methods=['POST', 'OPTIONS'])
+
+
+@app.route("/simulate", methods=['POST', 'OPTIONS'])
 def simulate():
     if request.method == 'OPTIONS':
         response = jsonify({'message': 'CORS preflight successful'})
         response.headers.update({
             "Access-Control-Allow-Origin": "http://localhost:3000",
-            # "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Credentials": "true",
@@ -132,23 +133,94 @@ def simulate():
         return response, 200
 
     if request.method == 'POST':
-        data = request.json
-        results = run_simulation(
-            data["variables"],
-            data["formula"],
-            data.get("num_trials", 10000)
-        )
+        # --- Manual Entry (JSON) ---
+        if request.content_type.startswith('application/json'):
+            data = request.json
+            results = run_simulation(
+                data["variables"],
+                data["formula"],
+                data.get("num_trials", 10000)
+            )
+            summary = {
+                "mean": float(np.mean(results)),
+                "percentile_5": float(np.percentile(results, 5)),
+                "percentile_95": float(np.percentile(results, 95)),
+            }
+            return jsonify({
+                "summary": summary,
+                "samples": results.tolist()
+            })
+        
+        #csv upload
+        elif request.content_type.startswith('multipart/form-data'):
+            if 'file' not in request.files:
+                return jsonify({"error": "No file part"}), 400
+            file = request.files['file']
 
-        summary = {
-            "mean": float(results.mean()),
-            "percentile_5": float(np.percentile(results, 5)),
-            "percentile_95": float(np.percentile(results, 95)),
-        }
+            try:
+                df = pd.read_csv(file)
+                # Normalize columns
+                df.columns = [col.strip().lower() for col in df.columns]
 
-        return jsonify({
-            "summary": summary,
-            "samples": results.tolist()
-        })
+                # Group by scenario (and, if needed, 'risk')
+                scenario_groups = df.groupby(['risk', 'scenario', 'formula'], dropna=False)
+
+                output = []
+
+                for (risk, scenario, formula), group in scenario_groups:
+                    variables = []
+                    for _, row in group.iterrows():
+                        variable_name = row['variable'] if 'variable' in row else ""
+                        distribution = row['distribution'].lower() if 'distribution' in row and pd.notnull(row['distribution']) else ""
+                        parameters = {}
+
+                        if distribution in ['normal', 'lognormal']:
+                            parameters = {
+                                "mean": float(row['mean']),
+                                "stddev": float(row.get('std_dev', row.get('stddev', 0))),
+                            }
+                        elif distribution == 'triangular':
+                            parameters = {
+                                "min": float(row['min']),
+                                "mode": float(row['mode']),
+                                "max": float(row['max']),
+                            }
+                        elif distribution == 'uniform':
+                            parameters = {
+                                "min": float(row['min']),
+                                "max": float(row['max']),
+                            }
+
+                        variables.append({
+                            "name": variable_name,
+                            "distribution": distribution,
+                            "parameters": parameters,
+                        })
+
+                    # Now run simulation for this scenario (with all its variables and formula)
+                    results = run_simulation(variables, formula, 10000)
+                    summary = {
+                        "mean": float(np.mean(results)),
+                        "percentile_5": float(np.percentile(results, 5)),
+                        "percentile_95": float(np.percentile(results, 95)),
+                    }
+
+                    output.append({
+                        "risk": risk,
+                        "scenario": scenario,
+                        "variables": variables,
+                        "formula": formula,
+                        "summary": summary,
+                        "samples": results.tolist(),
+                    })
+                for i in output:
+                    print(i['scenario'])
+                    print(i['variables'])
+                return jsonify({})
+            except Exception as e:
+                return jsonify({"error": f"Failed to process CSV: {str(e)}"}), 400
+        else:
+            return jsonify({"error": "Unsupported Content-Type"}), 415
     
 
 # @app.route("/download_results_zip", methods=["GET"])
