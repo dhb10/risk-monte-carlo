@@ -163,11 +163,11 @@ def simulate():
                 df.columns = [col.strip().lower() for col in df.columns]
 
                 # Group by scenario (and, if needed, 'risk')
-                scenario_groups = df.groupby(['risk', 'scenario', 'formula'], dropna=False)
+                scenario_groups = df.groupby(['risk', 'scenario', 'formula','formula_equals'], dropna=False)
 
                 output = []
 
-                for (risk, scenario, formula), group in scenario_groups:
+                for (risk, scenario, formula, formula_equals), group in scenario_groups:
                     variables = []
                     for _, row in group.iterrows():
                         variable_name = row['variable'] if 'variable' in row else ""
@@ -210,13 +210,15 @@ def simulate():
                         "scenario": scenario,
                         "variables": variables,
                         "formula": formula,
+                        "formula_equals": formula_equals,
                         "summary": summary,
                         "samples": results.tolist(),
                     })
-                for i in output:
-                    print(i['scenario'])
-                    print(i['variables'])
-                return jsonify({})
+                # for i in output:
+                #     print(i['scenario'])
+                #     print(i['variables'])
+                # print(output)
+                return jsonify(output)
             except Exception as e:
                 return jsonify({"error": f"Failed to process CSV: {str(e)}"}), 400
         else:

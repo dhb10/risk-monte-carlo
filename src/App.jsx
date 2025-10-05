@@ -10,6 +10,7 @@ import ResultsButtons from './components/ResultsButtons';
 import ResultsComponent from "./components/ResultsComponent";
 import Toggle from "./components/Toggle";
 import Simulation from "./components/Simulation";
+import MultiScenarioResults from "./components/MultiScenarioResults"; 
 
 const App = () => {
   const [results, setResults] = useState(null);
@@ -117,6 +118,7 @@ const App = () => {
   };
 
   const handleDownloadPdf = async () => {
+    console.log('Results state for rendering:', results);
     if (!results || results.length === 0) {
       alert("No data available for download.");
       return;
@@ -147,18 +149,27 @@ const App = () => {
         </div>
       );
     }
-    // Only render ResultsComponent if there is a non-empty results array
-    if (results && results.length > 0) {
-      return (
-        <div className="w-full ml-2 mr-2 mt-8 mb-8">
-          <Suspense fallback={<div> </div>}>
-            <ResultsComponent response={results} />
-          </Suspense>
-          <hr className="mt-8"></hr>
-        </div>
-      );
+    if (results) {
+      // If results is an array AND each entry has scenario keys, assume "multi-scenario" result
+      if (Array.isArray(results) && results.length > 0 && results[0].scenario) {
+        return (
+          <div className="w-full mt-8 mb-8">
+            <MultiScenarioResults scenarios={results} />
+            <hr className="mt-8"></hr>
+          </div>
+        );
+      }
+      // If in manual simulation mode and results is a single simulation object
+      if (manualMode && results.samples && results.summary) {
+        return (
+          <div className="w-full mt-8 mb-8">
+            <ResultsChart samples={results.samples} summary={results.summary} />
+            <hr className="mt-8"></hr>
+          </div>
+        );
+      }
     }
-    return null; // If there is nothing to render
+    return null;
   }
 
   return (
@@ -252,6 +263,7 @@ const App = () => {
                 results={results}
               />
             )}
+            {renderResults()}
           </div>
         )}
       </div>
