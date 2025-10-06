@@ -1,5 +1,5 @@
 import React from "react";
-import ScenarioResultsChart from "./ScenarioResultsChart";
+import ScenarioResultsChart from "./SimulationResultsChart";
 
 const MultiScenarioResults = ({ scenarios }) => {
   if (!scenarios?.length) return null;

@@ -6,7 +6,7 @@ const ResultsChart = ({ samples, summary }) => {
 
   return (
     
-    <div className="mt-0 w-full">
+    <div className="mb-0 w-full">
       <h3 className="font-bold">Results</h3>
       <p>Mean: ${summary.mean.toFixed(2)}</p>
       <p>5th percentile: ${summary.percentile_5.toFixed(2)}</p>

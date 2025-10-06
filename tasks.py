@@ -1,7 +1,12 @@
 #celery -A celery_config worker --loglevel=debug
 
+#for docker file need to include, for plotly image
+# brew install cairo pango gdk-pixbuf libffi
+
 from dotenv import load_dotenv
 load_dotenv()
+
+from flask import render_template_string
 
 from io import BytesIO, StringIO
 import os
@@ -11,6 +16,8 @@ import json
 import textwrap
 from pycomponents.graph import quant_scenario_app
 from celery_config import celery_app
+import plotly.graph_objects as go
+import base64
 
 import traceback
 
@@ -18,6 +25,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.enums import TA_LEFT
+from reportlab.pdfgen import canvas
+
+import weasyprint
 
 from azure.storage.blob import BlobServiceClient
 
@@ -131,6 +141,103 @@ def generate_risk_scenarios_pdf(risk_data) -> BytesIO:
     doc.build(story)
     buffer.seek(0)
     return buffer
+
+
+def plot_histogram_base64(samples):
+    fig = go.Figure(data=[
+        go.Histogram(
+            x=samples,
+            marker_color="#2B303a"  # set the bar color here
+        )
+    ])
+    fig.update_layout(
+        title="Outcome Distribution",
+        title_x=0.5,
+        xaxis_title="Outcome",
+        yaxis_title="Frequency",
+        autosize=True,
+        margin=dict(l=20, r=20, t=40, b=20),
+        plot_bgcolor="#eaeaeb", 
+    )
+    img_bytes = fig.to_image(format="png", width=600, height=350)
+    encoded = base64.b64encode(img_bytes).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+
+def generate_simulation_pdf(data):
+    tailwind_css = """
+    .card { background: white; border-radius: 12px; padding: 0 20px; margin: 20px auto; width: 95%; font-family: Arial, sans-serif; }
+    .card h3 { margin-bottom: 10px; font-size: 1.2rem; }
+    .border { border: 1px solid #ddd; }
+    .mb-4 { margin-bottom: 1rem; }
+    """
+
+    cards_html = ""
+    for idx, scenario in enumerate(data):
+        scenario["histogram_base64"] = plot_histogram_base64(scenario["samples"])
+        page_break = "page-break-before: always;" if idx > 0 else ""
+        cards_html += render_template_string("""
+        <div class="card border mb-4" style="{{ page_break }}">
+            <h3>RISK: {{ scenario.risk }}</h3>
+            <div style="margin-bottom: 8px;"><strong>Scenario:</strong><br> {{ scenario.scenario }}</div>
+            <hr>
+            {% if scenario.formula %}
+                <div style="margin-top: 8px;">
+                    <strong>Formula:</strong><br>
+                    {{ scenario.formula_equals }} = {{ scenario.formula }}<br>
+                </div>
+            {% endif %}
+            <div style="margin-top: 8px;">
+                <hr>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    {% for v in scenario.variables %}
+                        <div style="
+                            width: 48%;
+                            box-sizing: border-box;
+                            border: 1px solid #2b303a;
+                            border-radius: 6px;
+                            padding: 8px;
+                            background: #eaeaeb;
+                        ">
+                            <div style="font-weight: bold; margin-bottom: 4px; overflow-wrap: anywhere;">
+                                {{ v.name }}
+                            </div>
+
+                            <div style="margin-bottom: 8px;">
+                                Distribution: {{ v.distribution }}
+                            </div>
+                            <ul style="margin-top: 4px; margin-bottom: 0; padding-left: 18px;">
+                                {% for param, val in v.parameters.items() %}
+                                    <li>{{ param }}: {{ val }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endfor %}
+                </div>
+                <hr>
+            </div>
+            <div>
+                Mean: <b>${{ scenario.summary.mean | round(2) }}</b><br>
+                5th percentile: <b>${{ scenario.summary.percentile_5 | round(2) }}</b><br>
+                95th percentile: <b>${{ scenario.summary.percentile_95 | round(2) }}</b><br>
+            </div>
+            {% if scenario.histogram_base64 %}
+                <div style="margin-top: 10px; margin-bottom: 5px;">
+                    <img src="{{ scenario.histogram_base64 }}" style="width:95%; padding-top:10px; border:1px solid #2b303a; border-radius:6px;">
+                    <div style="font-size:0.95em; text-align:center; padding-top:20px; text-align:center; opacity:0.8;">Outcome Distribution</div>
+                </div>
+            {% endif %}
+        </div>
+        """, scenario=scenario, page_break=page_break)
+
+    html = f"<html><head><style>{tailwind_css}</style></head><body>{cards_html}</body></html>"
+
+    pdf_buffer = BytesIO()
+    weasyprint.HTML(string=html).write_pdf(pdf_buffer)
+    pdf_buffer.seek(0)
+    return pdf_buffer
+
 
 
 ###---TASKS---###

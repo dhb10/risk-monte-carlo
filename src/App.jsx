@@ -34,13 +34,12 @@ const App = () => {
     try {
       let response;
       if (mode === "Scenarios") {
-        // For scenarios, sending FormData (file upload), Content-Type optional but okay
         response = await axios.post(`${backendUrl}/scenarios`, formData, {
           // Axios/Browser will set boundaries if you omit the header,
           // but including it here is often harmless (less strict servers)
           headers: { "Content-Type": "multipart/form-data" }
         });
-        // if async (returns task id), start polling:
+        //start polling
         if (response.data && response.data.task_id) {
           setIsLoading(true);
           checkTaskStatus(response.data.task_id);
@@ -48,7 +47,7 @@ const App = () => {
           setResults(response.data);
         }
       } else {
-        // For simulation: could be FormData (file upload) or JSON (manual entry)
+        //could be form data or json for the manual entry
         let config = {};
         if (!(formData instanceof FormData)) {
           config.headers = { "Content-Type": "application/json" };
@@ -118,21 +117,35 @@ const App = () => {
   };
 
   const handleDownloadPdf = async () => {
-    console.log('Results state for rendering:', results);
     if (!results || results.length === 0) {
       alert("No data available for download.");
       return;
     }
     try {
       const payload = { data: results };
-      const res = await axios.post(`${backendUrl}/generate_pdf`, payload, {
+      // Choose endpoint based on mode
+      let endpoint;
+      let filename;
+
+      if (selectedMode === "Scenarios") {
+        endpoint = "/generate_pdf";
+        filename = "risk_scenarios.pdf";
+      } else if (selectedMode === "Simulation") {
+        endpoint = "/simulation_pdf";
+        filename = "simulation_results.pdf";
+      } else {
+        alert("PDF download not supported for this mode.");
+        return;
+      }
+
+      const res = await axios.post(`${backendUrl}${endpoint}`, payload, {
         headers: { "Content-Type": "application/json" },
         responseType: "blob"
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "risk_scenarios.pdf");
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -150,23 +163,37 @@ const App = () => {
       );
     }
     if (results) {
-      // If results is an array AND each entry has scenario keys, assume "multi-scenario" result
-      if (Array.isArray(results) && results.length > 0 && results[0].scenario) {
-        return (
-          <div className="w-full mt-8 mb-8">
-            <MultiScenarioResults scenarios={results} />
-            <hr className="mt-8"></hr>
-          </div>
-        );
+      // Render multi-scenario results or scenario results based on mode and presence of data
+      if (selectedMode === "Scenarios") {
+        // If an array of results - probably from scenarios mode
+        if (Array.isArray(results) && results.length > 0) {
+          return (
+            <div className="w-full mt-8 mb-8">
+              <ResultsComponent response={results} />
+              <hr className="mt-8"></hr>
+            </div>
+          );
+        }
       }
-      // If in manual simulation mode and results is a single simulation object
-      if (manualMode && results.samples && results.summary) {
-        return (
-          <div className="w-full mt-8 mb-8">
-            <ResultsChart samples={results.samples} summary={results.summary} />
-            <hr className="mt-8"></hr>
-          </div>
-        );
+      if (selectedMode === "Simulation") {
+        // If in manual simulation mode and results is a single simulation object
+        if (manualMode && results.samples && results.summary) {
+          return (
+            <div className="w-full mt-8 mb-8">
+              <ResultsChart samples={results.samples} summary={results.summary} />
+              <hr className="mt-8"></hr>
+            </div>
+          );
+        }
+        // If an array of simulations, render MultiScenarioResults (if wanted)
+        if (Array.isArray(results) && results.length > 0 && results[0].scenario) {
+          return (
+            <div className="w-full mt-8 mb-8">
+              <MultiScenarioResults scenarios={results} />
+              <hr className="mt-8"></hr>
+            </div>
+          );
+        }
       }
     }
     return null;
@@ -185,6 +212,7 @@ const App = () => {
         <div className="flex justify-center my-4 gap-4">
           <Button
             onClick={() => {
+              handleReset();
               setSelectedMode("Scenarios");
               setManualMode(false); // Reset manual toggle when changing mode
             }}
@@ -197,7 +225,9 @@ const App = () => {
             SCENARIOS
           </Button>
           <Button
-            onClick={() => {setSelectedMode("Simulation"); setResults(null);} }
+            onClick={() => {
+              handleReset();
+              setSelectedMode("Simulation");} }
             className={
               selectedMode === "Simulation"
                 ? "bg-gray-700 text-white"
@@ -211,7 +241,10 @@ const App = () => {
           <div className="flex justify-center mb-4">
             <Toggle
               isOn={manualMode}
-              onToggle={() => setManualMode(v => !v)}
+              onToggle={() => {
+                handleReset();
+                setManualMode(v => !v);
+              }}
               label="Manual Monte Carlo Input"
             />
           </div>
@@ -239,6 +272,7 @@ const App = () => {
               handleDownload={handleDownload}
               handleDownloadPdf={handleDownloadPdf}
               isLoading={isLoading}
+              selectedMode={selectedMode}
             />
           </div>
         )}
@@ -246,7 +280,7 @@ const App = () => {
         {/* upload and manual simulation */}
         {selectedMode === "Simulation" && (
           <div className="w-full mx-auto">
-            {/* If not manual mode, show risk upload */}
+            {/* Show risk upload only if not manualMode and no results */}
             {!manualMode && (!results || results.length === 0) && (
               <RiskUpload
                 onSubmit={formData => handleSubmit(formData, "Simulation")}
@@ -257,13 +291,26 @@ const App = () => {
               />
             )}
 
+            {/* Manual mode shows Simulation card, NOT renderResults */}
             {manualMode && (
               <Simulation
-                onSubmit={formData => handleSubmit(formData, "Simulation") }
+                onSubmit={formData => handleSubmit(formData, "Simulation")}
                 results={results}
               />
             )}
-            {renderResults()}
+
+            {/* Only show results (including multiscenario) if NOT manualMode */}
+            {!manualMode && renderResults()}
+
+            <ResultsButtons
+              response={results}
+              handleReset={handleReset}
+              handleDownload={handleDownload}
+              handleDownloadPdf={handleDownloadPdf}
+              isLoading={isLoading}
+              selectedMode={selectedMode}
+              manualMode={manualMode}
+            />
           </div>
         )}
       </div>

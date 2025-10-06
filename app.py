@@ -15,7 +15,7 @@ import io
 from celery_config import celery_app
 from celery import chord
 
-from tasks import df_to_list_of_risk_dicts, generate_scenarios, chord_callback, generate_risk_scenarios_pdf
+from tasks import df_to_list_of_risk_dicts, generate_scenarios, chord_callback, generate_risk_scenarios_pdf, generate_simulation_pdf
 
 ###---ENV VARIABLES---###
 azure_openai_api_key = os.getenv("AZUREOPENAI_API_KEY")
@@ -117,6 +117,19 @@ def generate_pdf():
         as_attachment=True,
         download_name='risk_scenarios.pdf'
     )
+
+
+@app.route('/simulation_pdf', methods=['POST'])
+def simulation_pdf():
+    data = request.get_json(force=True).get("data", [])
+    pdf_buffer = generate_simulation_pdf(data)
+    return send_file(
+        pdf_buffer,
+        download_name="risk_scenarios.pdf",
+        as_attachment=True,
+        mimetype="application/pdf"
+    )
+
 
 
 
