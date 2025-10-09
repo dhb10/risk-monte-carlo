@@ -22,6 +22,15 @@ const App = () => {
 
   const backendUrl = "http://localhost:5000";
 
+  const handleTemplateDownload = (fileName) => {
+    const link = document.createElement("a");
+    link.href = `/${fileName}`;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleSubmit = async (formData, mode) => {
     if (mode === "Scenarios") {
       setIsUploading(true);
@@ -207,9 +216,22 @@ const App = () => {
           RISK SCENARIOS & MONTE CARLO SIMULATION
         </h2>
         <hr className="w-full border-t border-gray-500 print:hidden" />
-
+        {/* template file download buttons */}
+        <div className="flex w-full max-w-xl justify-center mt-4 gap-4">
+          <Button
+            onClick={() => handleTemplateDownload('risk_scenario_id-TEMPLATE.csv')}
+          >
+            SCENARIO TEMPLATE
+          </Button>
+          <Button
+            onClick={() => handleTemplateDownload('risk_scenario_monte_carlo-TEMPLATE.xlsx')}
+          >
+            SIMULATION TEMPLATE
+          </Button>
+        </div>
+        <hr className="w-full border-t my-4 border-gray-500 print:hidden" />
         {/* mode buttons */}
-        <div className="flex justify-center my-4 gap-4">
+        <div className="flex w-full max-w-xl justify-center my-4 gap-4">
           <Button
             onClick={() => {
               handleReset();

@@ -87,7 +87,7 @@ const RiskUpload = ({ isLoading, onSubmit, resetFileTrigger, clearResetFileTrigg
         )}
       </div>
       {error && <p className="text-red-500 mt-2">{error}</p>}
-      <div className="mt-8 print:hidden">
+      <div className="mt-8 print:hidden w-1/4 min-w-[200px] mx-auto">
         <Button onClick={handleFileSubmit} isSelected={false} isDisabled={isLoading}>
           SUBMIT
         </Button>

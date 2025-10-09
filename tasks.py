@@ -26,7 +26,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.enums import TA_LEFT
 from reportlab.pdfgen import canvas
-
 import weasyprint
 
 from azure.storage.blob import BlobServiceClient

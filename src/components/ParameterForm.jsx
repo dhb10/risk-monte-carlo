@@ -75,7 +75,7 @@ const ParameterForm = ({ onSubmit }) => {
             ))}
           </div>
         )}
-        <div className="mt-6 flex justify-center">
+        <div className="mt-8 print:hidden w-1/4 min-w-[200px] mx-auto">
           <Button onClick={addVariable}>ADD VARIABLE</Button>
         </div>
       </div>
@@ -107,7 +107,7 @@ const ParameterForm = ({ onSubmit }) => {
             onChange={(e) => setNumTrials(parseInt(e.target.value, 10))}
           />
         </div>
-                <div className="mt-6 flex justify-center">
+        <div className="mt-8 print:hidden w-3/4 min-w-[200px] mx-auto">
           <Button onClick={handleSubmit}>RUN SIMULATION</Button>
         </div>
       </div>

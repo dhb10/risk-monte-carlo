@@ -5,7 +5,7 @@ function Button({ onClick, isSelected, isDisabled = false, children, className =
     <button
       onClick={!isDisabled ? onClick : undefined}
       disabled={isDisabled}
-      className={`w-full min-w-[200px] sm:w-auto px-4 py-4 rounded text-center text-sm sm:text-base
+      className={`w-full min-w-[200px]  px-4 py-4 rounded text-center text-sm sm:text-base
         ${isDisabled ? 'bg-gray-400 text-gray-700 cursor-not-allowed' : 'hover:bg-black hover:text-white'}
         ${isSelected ? 'bg-[#2b303a] text-white' : 'bg-gray-300 text-[#2b303a]'} ${className}`}
     >
