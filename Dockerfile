@@ -23,7 +23,7 @@ RUN npm run build
 # ----------------------
 # FROM python:3.13.4
 
-FROM python:3.12-slim
+FROM python:3.12
 
 # Install system dependencies (Postgres, build-essential, supervisor, and required libraries)
 RUN apt-get update && apt-get upgrade -y \
@@ -38,8 +38,12 @@ RUN apt-get update && apt-get upgrade -y \
     supervisor \
     libcairo2 \
     libpango-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
     libffi-dev \
+    fonts-liberation \
+    fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 
@@ -54,6 +58,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Print the build-time env vars (optional, for debugging)
+# RUN echo "----ENV IN DOCKER BUILD----" && printenv
+
 # Copy backend code (explicitly, to avoid node_modules pollution)
 COPY app.py tasks.py celery_config.py supervisord.conf ./
 COPY pycomponents ./pycomponents
@@ -64,6 +71,6 @@ COPY --from=frontend-builder /app/dist ./dist
 
 USER appuser
 
-EXPOSE 5000
+EXPOSE 8080
 
-CMD ["/usr/bin/supervisord", "-n"]
+CMD ["/usr/bin/supervisord", "-c", "/app/supervisord.conf", "-n"]

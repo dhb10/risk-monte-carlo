@@ -17,6 +17,12 @@ from celery import chord
 
 from tasks import df_to_list_of_risk_dicts, generate_scenarios, chord_callback, generate_risk_scenarios_pdf, generate_simulation_pdf
 
+
+# import sys, os
+# I didn't install supervisor
+# print("### BOOTING APP.PY ###", file=sys.stderr, flush=True)
+# print("PORT:", os.getenv("PORT"), "WEBSITES_PORT:", os.getenv("WEBSITES_PORT"), file=sys.stderr, flush=True)
+
 ###---ENV VARIABLES---###
 azure_openai_api_key = os.getenv("AZUREOPENAI_API_KEY")
 azure_openai_endpoint = os.getenv("AZUREOPENAI_ENDPOINT")
@@ -29,18 +35,39 @@ blob_service_client = BlobServiceClient.from_connection_string(blob_connection_s
 container_client = blob_service_client.get_container_client(blob_container_name)
 blob_container_key=os.getenv("BLOB_CONTAINER_KEY")
 
+# print("PORT ENV:", os.environ.get("PORT"))
+
+# print("ALL ENVS:", dict(os.environ))
+
+# required = [
+#     "BLOB_CONTAINER_RISKID", "BLOB_CONNECTION_STRING",
+#     "AZUREOPENAI_API_KEY", "AZUREOPENAI_ENDPOINT",
+#     "REDISCLOUD_URL"
+# ]
+# for v in required:
+#     if not os.getenv(v):
+#         print(f"Boot failed: {v} not set!")
+#         raise SystemExit(1)
+
+# ORIGIN="http://localhost:3000"
+
+ORIGIN="https://risk-scenario-monte-carlo-f3chancqfnb5fpbx.centralus-01.azurewebsites.net"
 
 ###---FLASK INIT---###
+
 # app = Flask(__name__,static_folder='dist')
-# CORS(app, resources={r"/*": {"origins": "https://risk-definition-assistant-a9dshthcfqemfue8.centralus-01.azurewebsites.net"}})
+# CORS(app, resources={r"/*": {"origins": ORIGIN}})
 
 # #for dev
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
-
+CORS(app, resources={r"/*": {"origins": ORIGIN}})
 
 
 ###---MAIN---###
+@app.route("/health", methods=["GET"])
+def healthcheck():
+    print("HEALTH CHECK PASSED")
+    return "OK", 200
 
 
 @app.route('/generate_csv', methods=['POST', 'OPTIONS'])
@@ -48,7 +75,7 @@ def generate_csv():
     if request.method == 'OPTIONS':
         response = jsonify({'message': 'CORS preflight successful'})
         response.headers.update({
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": ORIGIN,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Credentials": "true",
@@ -100,7 +127,7 @@ def generate_pdf():
     if request.method == 'OPTIONS':
         response = jsonify({'message': 'CORS preflight successful'})
         response.headers.update({
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": ORIGIN,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Credentials": "true",
@@ -138,7 +165,7 @@ def simulate():
     if request.method == 'OPTIONS':
         response = jsonify({'message': 'CORS preflight successful'})
         response.headers.update({
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": ORIGIN,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Credentials": "true",
@@ -284,7 +311,7 @@ def generate_risk_scenarios():
         response = jsonify({'message': 'CORS preflight successful'})
         response.headers.update({
             # "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": ORIGIN,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Allow-Credentials": "true",
@@ -352,19 +379,28 @@ def task_status(task_id):
 #         # Otherwise, serve the index.html for the root or any other non-static request
 #         return send_from_directory(app.static_folder, 'index.html')
 
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_react(path):
+    static_folder = os.path.join(os.path.dirname(__file__), "dist")
+    if path and os.path.exists(os.path.join(static_folder, path)):
+        return send_from_directory(static_folder, path)
+    else:
+        # Otherwise, serve the index.html for the root or any other non-static request
+        return send_from_directory(static_folder, 'index.html')
+
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=8080, debug=False)
 
 # if __name__ == '__main__':
-#     app.run(host="0.0.0.0", port=5000, debug=False)
-
-# @app.after_request
-# def add_cors_headers(response):
-#     response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-#     response.headers['Access-Control-Allow-Credentials'] = 'true'
-#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-#     return response
+#     print("PORT ENV:", os.environ.get("PORT"))
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(host="0.0.0.0", port=port, debug=False)
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
+
+# if __name__ == "__main__":
+#     app.run(debug=True)
 

@@ -1,7 +1,7 @@
-import React, { useState, Suspense } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import axios from "axios";
-import ParameterForm from "./components/ParameterForm";
-import ResultsChart from "./components/ResultsChart";
+// import ParameterForm from "./components/ParameterForm";
+// import ResultsChart from "./components/ResultsChart";
 import RiskUpload from "./components/RiskUpload";
 import Button from "./components/Button";
 import logo from "./assets/logo.png";
@@ -10,7 +10,10 @@ import ResultsButtons from './components/ResultsButtons';
 import ResultsComponent from "./components/ResultsComponent";
 import Toggle from "./components/Toggle";
 import Simulation from "./components/Simulation";
-import MultiScenarioResults from "./components/MultiScenarioResults"; 
+// import MultiScenarioResults from "./components/MultiScenarioResults";
+
+const ResultsChart = lazy(() => import("./components/ResultsChart")); 
+const MultiScenarioResults = lazy(() => import("./components/MultiScenarioResults"));
 
 const App = () => {
   const [results, setResults] = useState(null);
@@ -20,7 +23,8 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [manualMode, setManualMode] = useState(false);
 
-  const backendUrl = "http://localhost:5000";
+  // const backendUrl = "http://localhost:5000";
+  const backendUrl ="https://risk-scenario-monte-carlo-f3chancqfnb5fpbx.centralus-01.azurewebsites.net"
 
   const handleTemplateDownload = (fileName) => {
     const link = document.createElement("a");
@@ -189,7 +193,9 @@ const App = () => {
         if (manualMode && results.samples && results.summary) {
           return (
             <div className="w-full mt-8 mb-8">
-              <ResultsChart samples={results.samples} summary={results.summary} />
+               <Suspense fallback={<div>Loading chart...</div>}>
+                <ResultsChart samples={results.samples} summary={results.summary} />
+               </Suspense>
               <hr className="mt-8"></hr>
             </div>
           );
@@ -198,6 +204,9 @@ const App = () => {
         if (Array.isArray(results) && results.length > 0 && results[0].scenario) {
           return (
             <div className="w-full mt-8 mb-8">
+              <Suspense fallback={<div>Loading chart...</div>}>
+                <MultiScenarioResults scenarios={results} />
+              </Suspense>
               <MultiScenarioResults scenarios={results} />
               <hr className="mt-8"></hr>
             </div>

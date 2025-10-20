@@ -9,24 +9,17 @@ redis_url = os.getenv("REDISCLOUD_URL")
 if not redis_url:
     raise ValueError("Redis URL is not set in the environment variables")
 
-# print("Loaded Redis URL:", redis_url)
 
 # For SSL on Azure, you could uncomment and use this:
-# redis_url_with_ssl = redis_url + "?ssl_cert_reqs=CERT_REQUIRED"
+redis_url_with_ssl = redis_url + "?ssl_cert_reqs=CERT_REQUIRED"
 
 # For local/testing
-redis_url_with_ssl = redis_url
+# redis_url_with_ssl = redis_url
 
-# print("Redis URL:", redis_url_with_ssl)
-
-#the first argument is the name of the main module, not where tasks are necessarily defined
 celery_app = Celery('app')
 
 celery_app.conf.broker_url = redis_url_with_ssl
 celery_app.conf.result_backend = redis_url_with_ssl
-
-# celery_app.conf.broker_url = 'redis://127.0.0.1:6379/0'
-# celery_app.conf.result_backend = 'redis://127.0.0.1:6379/0'
 
 #update other config values
 celery_app.conf.update(

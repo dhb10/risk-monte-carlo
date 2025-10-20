@@ -1,6 +1,8 @@
-import React from "react";
+import React, { Suspense, lazy } from 'react';
 import ParameterForm from "./ParameterForm";
-import ResultsChart from "./ResultsChart";
+// import ResultsChart from "./ResultsChart";
+
+const ResultsChart = lazy(() => import('./ResultsChart'));
 
 const Simulation = ({ onSubmit, results }) => {
   return (
@@ -9,7 +11,10 @@ const Simulation = ({ onSubmit, results }) => {
       {results && (
         <div className="w-full bg-white p-6 rounded border border-gray-700 shadow mt-6">
           <div className="max-w-6xl mx-auto">
-            <ResultsChart samples={results.samples} summary={results.summary} />
+            <Suspense fallback={<div>Loading chart...</div>}>
+              <ResultsChart samples={results.samples} summary={results.summary} />
+            </Suspense>
+            
           </div>
         </div>
       )}

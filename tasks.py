@@ -30,26 +30,25 @@ import weasyprint
 
 from azure.storage.blob import BlobServiceClient
 
-###---ENV---###
-blob_connection_string = os.getenv("BLOB_CONNECTION_STRING")
-blob_container_name = os.getenv("BLOB_CONTAINER_RISKID")
-blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
-container_client = blob_service_client.get_container_client(blob_container_name)
-blob_container_key=os.getenv("BLOB_CONTAINER_KEY")
-
-
-
-# quant_scenario_app.invoke({"sector":"higher education", 'organization':'Northwestern University','risk':'cybersecurity'})
-
-
 
 ###---HELPER FUNCTIONS---###
 
 def df_to_list_of_risk_dicts(df):
     return df.to_dict(orient='records')
 
+def get_container_client():
+    blob_connection_string = os.getenv("BLOB_CONNECTION_STRING")
+    blob_container_name = os.getenv("BLOB_CONTAINER_RISKID")
+    if not blob_connection_string:
+        raise RuntimeError("BLOB_CONNECTION_STRING is required but not set!")
+    if not blob_container_name:
+        raise RuntimeError("BLOB_CONTAINER_RISKID is required but not set!")
+    blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
+    return blob_service_client.get_container_client(blob_container_name)
+
 
 def upload_to_blob(data, blob_name: str, is_binary: bool = False):
+    container_client = get_container_client()
     blob_client = container_client.get_blob_client(blob_name)
     upload_data = data if is_binary else data.encode("utf-8")
     blob_client.upload_blob(upload_data, overwrite=True)
@@ -60,8 +59,6 @@ def upload_df_to_blob(df: pd.DataFrame, blob_name: str):
     csv_buffer = StringIO()
     df.to_csv(csv_buffer, index=False)
     upload_to_blob(csv_buffer.getvalue(), blob_name)
-
-    import re
 
 
 def generate_risk_scenarios_pdf(risk_data) -> BytesIO:
@@ -268,8 +265,4 @@ def generate_scenarios(risk_dict: dict):
 @celery_app.task()
 def chord_callback(results):
     print(f"Received list of {len(results)} risk analysis results")
-    # print("*********")
-    # print(results)
-    # print("*********")
-
     return results
